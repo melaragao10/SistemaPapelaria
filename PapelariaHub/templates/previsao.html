@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>PapelariaHub - Previsão de Esgotamento</title>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 40px;
+            background: #f5f5f5;
+        }
+        .caixa {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,.15);
+            max-width: 1000px;
+            margin: auto;
+        }
+        h1 { margin-top: 0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border-bottom: 1px solid #ddd;
+            padding: 6px;
+            text-align: left;
+            font-size: 14px;
+        }
+        .topo-links a {
+            margin-right: 10px;
+            text-decoration: none;
+        }
+        .critico { background: #ffebee; }
+        .atencao { background: #fff3e0; }
+        .confortavel { background: #e8f5e9; }
+        .sem-dados { color: #757575; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="caixa">
+    <div class="topo-links">
+        <a href="{{ url_for('tela_principal') }}">Início</a>
+        <a href="{{ url_for('gerenciar_grupos') }}">Grupos</a>
+        <a href="{{ url_for('gerenciar_itens') }}">Itens</a>
+        <a href="{{ url_for('movimentar_estoque') }}">Movimentações</a>
+        <a href="{{ url_for('previsao_estoque') }}">Previsão</a>
+    </div>
+
+    <h1>Previsão de Esgotamento de Estoque</h1>
+    <p>
+        Abaixo são exibidos os itens de papelaria com a estimativa de
+        em quantos dias o estoque atual pode se esgotar, com base no
+        histórico de saídas registradas.
+    </p>
+
+    {% if previsoes %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Quantidade atual</th>
+                    <th>Média de saída por dia</th>
+                    <th>Previsão de dias restantes</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in previsoes %}
+                    {% set classe = "" %}
+                    {% if p.status.startswith("Alerta crítico") %}
+                        {% set classe = "critico" %}
+                    {% elif p.status.startswith("Atenção") %}
+                        {% set classe = "atencao" %}
+                    {% elif p.status.startswith("Estoque confortável") %}
+                        {% set classe = "confortavel" %}
+                    {% endif %}
+                    <tr class="{{ classe }}">
+                        <td>{{ p.nome_produto }}</td>
+                        <td>{{ p.quantidade_atual }}</td>
+                        <td>
+                            {% if p.media_diaria is not none %}
+                                {{ p.media_diaria }}
+                            {% else %}
+                                <span class="sem-dados">Sem dados suficientes</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if p.dias_restantes is not none %}
+                                {{ p.dias_restantes }}
+                            {% else %}
+                                <span class="sem-dados">Não calculado</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ p.status }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Nenhum item encontrado.</p>
+    {% endif %}
+</div>
+
+</body>
+</html>

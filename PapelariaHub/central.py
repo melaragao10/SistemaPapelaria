@@ -70,9 +70,115 @@ def configurar_banco():
     conexao.commit()
     conexao.close()
 
+def calcular_previsao_estoque():
+    """
+    Para cada item, calcula a média diária de saída e a previsão
+    de em quantos dias o estoque atual deve acabar.
+    Retorna uma lista de dicionários com os dados.
+    """
+    conexao = conectar_banco()
+
+    # Buscar todos os itens
+    itens = conexao.execute(
+        """
+        SELECT id_produto, nome_produto, quantidade, limite_minimo
+        FROM estoque_itens
+        ORDER BY nome_produto
+        """
+    ).fetchall()
+
+    previsoes = []
+
+    for item in itens:
+        produto_id = item["id_produto"]
+        quantidade_atual = item["quantidade"] or 0
+
+        # Buscar dados das saídas desse item
+        dados_saida = conexao.execute(
+            """
+            SELECT
+                SUM(valor) AS total_saida,
+                MIN(data_registro) AS primeira_saida,
+                MAX(data_registro) AS ultima_saida,
+                (julianday(MAX(data_registro)) - julianday(MIN(data_registro)) + 1) AS dias_intervalo
+            FROM transacoes_estoque
+            WHERE tipo_transacao = 'saida' AND produto_id = ?
+            """,
+            (produto_id,),
+        ).fetchone()
+
+        total_saida = dados_saida["total_saida"]
+
+        # Se nunca teve saída, não temos como prever
+        if total_saida is None or total_saida == 0:
+            previsoes.append(
+                {
+                    "nome_produto": item["nome_produto"],
+                    "quantidade_atual": quantidade_atual,
+                    "media_diaria": None,
+                    "dias_restantes": None,
+                    "status": "Sem consumo registrado",
+                }
+            )
+            continue
+
+        dias_intervalo = dados_saida["dias_intervalo"]
+
+        # Evitar divisão por zero
+        if dias_intervalo is None or dias_intervalo <= 0:
+            previsoes.append(
+                {
+                    "nome_produto": item["nome_produto"],
+                    "quantidade_atual": quantidade_atual,
+                    "media_diaria": None,
+                    "dias_restantes": None,
+                    "status": "Período insuficiente",
+                }
+            )
+            continue
+
+        # Média de consumo por dia
+        media_diaria = total_saida / dias_intervalo
+
+        if media_diaria <= 0:
+            previsoes.append(
+                {
+                    "nome_produto": item["nome_produto"],
+                    "quantidade_atual": quantidade_atual,
+                    "media_diaria": media_diaria,
+                    "dias_restantes": None,
+                    "status": "Consumo não significativo",
+                }
+            )
+            continue
+
+        # Dias até acabar (aproximação)
+        dias_restantes = quantidade_atual / media_diaria if quantidade_atual > 0 else 0
+
+        # Classificar status
+        if dias_restantes == 0 and quantidade_atual == 0:
+            status = "Esgotado"
+        elif dias_restantes < 3:
+            status = "Alerta crítico (pode acabar em poucos dias)"
+        elif dias_restantes < 7:
+            status = "Atenção (menos de uma semana)"
+        else:
+            status = "Estoque confortável"
+
+        previsoes.append(
+            {
+                "nome_produto": item["nome_produto"],
+                "quantidade_atual": quantidade_atual,
+                "media_diaria": round(media_diaria, 2),
+                "dias_restantes": round(dias_restantes, 1),
+                "status": status,
+            }
+        )
+
+    conexao.close()
+    return previsoes
 
 from flask import Flask, render_template
-# já estava no seu código, mas garanta que tem "render_template"
 
 @app.route("/")
 def tela_principal():
@@ -297,6 +403,16 @@ def movimentar_estoque():
 
     conexao.close()
     return render_template("movimentacoes.html", itens=itens, transacoes=transacoes)
+
+@app.route("/previsao")
+def previsao_estoque():
+    """
+    Mostra, para cada item, a previsão de em quantos dias
+    o estoque atual deve acabar, com base no histórico de saídas.
+    """
+    previsoes = calcular_previsao_estoque()
+    return render_template("previsao.html", previsoes=previsoes)
+
 
 if __name__ == "__main__":
     configurar_banco()
