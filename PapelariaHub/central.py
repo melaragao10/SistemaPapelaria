@@ -184,6 +184,120 @@ def gerenciar_itens():
     conexao.close()
     return render_template("itens.html", itens=itens, grupos=grupos)
 
+@app.route("/movimentacoes", methods=["GET", "POST"])
+def movimentar_estoque():
+    """
+    Tela para registrar entradas e saídas de itens de papelaria.
+    Atualiza a quantidade em estoque e guarda o histórico na tabela
+    transacoes_estoque.
+    """
+    conexao = conectar_banco()
+
+    # Itens para preencher o select no formulário
+    itens = conexao.execute(
+        "SELECT id_produto, nome_produto, quantidade FROM estoque_itens ORDER BY nome_produto"
+    ).fetchall()
+
+    if request.method == "POST":
+        produto_id = request.form.get("produto_id")
+        tipo = request.form.get("tipo_transacao")  # entrada / saida
+        valor = request.form.get("valor", "0").strip()
+        razao = request.form.get("razao", "").strip()
+        observacoes = request.form.get("observacoes", "").strip()
+        operador = request.form.get("operador", "").strip() or "usuario"
+
+        # Validações básicas
+        if not produto_id or not tipo or not valor or not razao:
+            flash("Preencha todos os campos obrigatórios.", "erro")
+            conexao.close()
+            return redirect(url_for("movimentar_estoque"))
+
+        try:
+            valor_int = int(valor)
+        except ValueError:
+            flash("A quantidade deve ser um número inteiro.", "erro")
+            conexao.close()
+            return redirect(url_for("movimentar_estoque"))
+
+        if valor_int <= 0:
+            flash("A quantidade deve ser maior que zero.", "erro")
+            conexao.close()
+            return redirect(url_for("movimentar_estoque"))
+
+        # Buscar quantidade atual do item
+        item = conexao.execute(
+            "SELECT quantidade FROM estoque_itens WHERE id_produto = ?",
+            (produto_id,),
+        ).fetchone()
+
+        if not item:
+            flash("Item não encontrado.", "erro")
+            conexao.close()
+            return redirect(url_for("movimentar_estoque"))
+
+        quantidade_atual = item["quantidade"] or 0
+
+        # Calcular nova quantidade
+        if tipo == "entrada":
+            nova_qtd = quantidade_atual + valor_int
+        elif tipo == "saida":
+            if valor_int > quantidade_atual:
+                flash("Não é possível registrar saída maior que o estoque disponível.", "erro")
+                conexao.close()
+                return redirect(url_for("movimentar_estoque"))
+            nova_qtd = quantidade_atual - valor_int
+        else:
+            flash("Tipo de transação inválido.", "erro")
+            conexao.close()
+            return redirect(url_for("movimentar_estoque"))
+
+        # Registrar na tabela de transações
+        conexao.execute(
+            """
+            INSERT INTO transacoes_estoque
+            (produto_id, tipo_transacao, valor, razao, observacoes, operador)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (produto_id, tipo, valor_int, razao, observacoes, operador),
+        )
+
+        # Atualizar quantidade do item
+        conexao.execute(
+            """
+            UPDATE estoque_itens
+            SET quantidade = ?, atualizado_em = CURRENT_TIMESTAMP
+            WHERE id_produto = ?
+            """,
+            (nova_qtd, produto_id),
+        )
+
+        conexao.commit()
+        conexao.close()
+        flash("Movimentação registrada com sucesso!", "sucesso")
+        return redirect(url_for("movimentar_estoque"))
+
+    # Se for GET: listar últimas transações
+    transacoes = conexao.execute(
+        """
+        SELECT
+            t.id_transacao,
+            t.tipo_transacao,
+            t.valor,
+            t.razao,
+            t.observacoes,
+            t.operador,
+            t.data_registro,
+            e.nome_produto
+        FROM transacoes_estoque t
+        JOIN estoque_itens e ON e.id_produto = t.produto_id
+        ORDER BY t.data_registro DESC
+        LIMIT 20
+        """
+    ).fetchall()
+
+    conexao.close()
+    return render_template("movimentacoes.html", itens=itens, transacoes=transacoes)
+
 if __name__ == "__main__":
     configurar_banco()
     app.run(debug=True)

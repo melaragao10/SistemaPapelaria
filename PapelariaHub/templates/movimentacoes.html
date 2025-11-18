@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>PapelariaHub - Movimentações de Estoque</title>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 40px;
+            background: #f5f5f5;
+        }
+        .caixa {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,.15);
+            max-width: 1000px;
+            margin: auto;
+        }
+        h1 { margin-top: 0; }
+        form { margin-bottom: 20px; }
+        label { display: block; margin-top: 8px; }
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 6px;
+            box-sizing: border-box;
+        }
+        button {
+            margin-top: 12px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button.salvar { background: #6a1b9a; color: white; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border-bottom: 1px solid #ddd;
+            padding: 6px;
+            text-align: left;
+            font-size: 14px;
+        }
+        .mensagem-sucesso { color: #2e7d32; }
+        .mensagem-erro { color: #c62828; }
+        .topo-links a {
+            margin-right: 10px;
+            text-decoration: none;
+        }
+        .entrada { color: #2e7d32; }
+        .saida { color: #c62828; }
+    </style>
+</head>
+<body>
+
+<div class="caixa">
+    <div class="topo-links">
+        <a href="{{ url_for('tela_principal') }}">Início</a>
+        <a href="{{ url_for('gerenciar_grupos') }}">Grupos</a>
+        <a href="{{ url_for('gerenciar_itens') }}">Itens</a>
+        <a href="{{ url_for('movimentar_estoque') }}">Movimentações</a>
+    </div>
+
+    <h1>Movimentações de Estoque</h1>
+    <p>Registre entradas e saídas de itens de papelaria.</p>
+
+    <!-- Mensagens -->
+    {% with mensagens = get_flashed_messages(with_categories=true) %}
+      {% if mensagens %}
+        {% for categoria, texto in mensagens %}
+          <p class="mensagem-{{ categoria }}">{{ texto }}</p>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- Formulário de movimentação -->
+    <form method="post">
+        <label for="produto_id">Item *</label>
+        <select id="produto_id" name="produto_id" required>
+            <option value="">-- Selecionar --</option>
+            {% for item in itens %}
+                <option value="{{ item['id_produto'] }}">
+                    {{ item['nome_produto'] }} (estoque atual: {{ item['quantidade'] }})
+                </option>
+            {% endfor %}
+        </select>
+
+        <label for="tipo_transacao">Tipo de movimentação *</label>
+        <select id="tipo_transacao" name="tipo_transacao" required>
+            <option value="">-- Selecionar --</option>
+            <option value="entrada">Entrada</option>
+            <option value="saida">Saída</option>
+        </select>
+
+        <label for="valor">Quantidade *</label>
+        <input type="number" id="valor" name="valor" min="1" required>
+
+        <label for="razao">Razão (compra, venda, uso interno...) *</label>
+        <input type="text" id="razao" name="razao" required>
+
+        <label for="operador">Responsável pela movimentação</label>
+        <input type="text" id="operador" name="operador" placeholder="Ex.: Melissa, funcionário X">
+
+        <label for="observacoes">Observações</label>
+        <textarea id="observacoes" name="observacoes" rows="3"></textarea>
+
+        <button type="submit" class="salvar">Registrar movimentação</button>
+    </form>
+
+    <!-- Listagem de últimas transações -->
+    <h2>Últimas movimentações</h2>
+    {% if transacoes %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Item</th>
+                    <th>Tipo</th>
+                    <th>Quantidade</th>
+                    <th>Razão</th>
+                    <th>Responsável</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mov in transacoes %}
+                    <tr>
+                        <td>{{ mov["data_registro"] }}</td>
+                        <td>{{ mov["nome_produto"] }}</td>
+                        <td class="{{ mov['tipo_transacao'] }}">{{ mov["tipo_transacao"] }}</td>
+                        <td>{{ mov["valor"] }}</td>
+                        <td>{{ mov["razao"] }}</td>
+                        <td>{{ mov["operador"] }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Nenhuma movimentação registrada ainda.</p>
+    {% endif %}
+</div>
+
+</body>
+</html>

@@ -1,31 +1,18 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <title>PapelariaHub - Painel Inicial</title>
-    <style>
-        body { 
-            font-family: Arial; 
-            margin: 40px; 
-            background: #f5f5f5; 
-        }
-        .caixa {
-            background: white;
-            padding: 25px;
-            width: 600px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,.15);
-        }
-        h1 { color: #333; }
-        p { color: #555; }
-    </style>
-</head>
 <body>
 
     <div class="caixa">
         <h1>PapelariaHub</h1>
         <p>Sistema de controle de materiais de papelaria.</p>
-        <p>Escolha uma opção no menu (em breve).</p>
+
+        <div style="margin: 15px 0;">
+    <strong>Menu rápido:</strong><br>
+    <a href="{{ url_for('gerenciar_grupos') }}">Grupos</a> |
+    <a href="{{ url_for('gerenciar_itens') }}">Itens</a> |
+    <a href="{{ url_for('movimentar_estoque') }}">Movimentações</a>
+        </div>
+
+
+        <p>Use o menu acima para começar a organizar os materiais da papelaria.</p>
     </div>
 
 </body>
