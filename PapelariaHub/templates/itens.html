@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>PapelariaHub - Itens de Papelaria</title>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 40px;
+            background: #f5f5f5;
+        }
+        .caixa {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,.15);
+            max-width: 1000px;
+            margin: auto;
+        }
+        h1 { margin-top: 0; }
+        form { margin-bottom: 20px; }
+        label { display: block; margin-top: 8px; }
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 6px;
+            box-sizing: border-box;
+        }
+        button {
+            margin-top: 12px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button.salvar { background: #1565c0; color: white; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border-bottom: 1px solid #ddd;
+            padding: 6px;
+            text-align: left;
+            font-size: 14px;
+        }
+        .mensagem-sucesso { color: #2e7d32; }
+        .mensagem-erro { color: #c62828; }
+        .topo-links a {
+            margin-right: 10px;
+            text-decoration: none;
+        }
+        .estoque-baixo {
+            background: #fff3e0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="caixa">
+    <div class="topo-links">
+        <a href="{{ url_for('tela_principal') }}">Início</a>
+        <a href="{{ url_for('gerenciar_grupos') }}">Grupos</a>
+        <a href="{{ url_for('gerenciar_itens') }}">Itens</a>
+    </div>
+
+    <h1>Itens de Papelaria</h1>
+    <p>Cadastre os itens de papelaria e associe cada um a um grupo.</p>
+
+    <!-- Mensagens -->
+    {% with mensagens = get_flashed_messages(with_categories=true) %}
+      {% if mensagens %}
+        {% for categoria, texto in mensagens %}
+          <p class="mensagem-{{ categoria }}">{{ texto }}</p>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- Formulário de cadastro de item -->
+    <form method="post">
+        <label for="nome_produto">Nome do produto *</label>
+        <input type="text" id="nome_produto" name="nome_produto" required>
+
+        <label for="grupo_id">Grupo</label>
+        <select id="grupo_id" name="grupo_id">
+            <option value="">-- Selecionar --</option>
+            {% for grupo in grupos %}
+                <option value="{{ grupo['id_grupo'] }}">{{ grupo['nome_grupo'] }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="unidade">Unidade (ex.: unidade, caixa, pacote)</label>
+        <input type="text" id="unidade" name="unidade">
+
+        <label for="limite_minimo">Limite mínimo (estoque baixo) </label>
+        <input type="number" id="limite_minimo" name="limite_minimo" min="0" value="5">
+
+        <label for="quantidade">Quantidade inicial em estoque</label>
+        <input type="number" id="quantidade" name="quantidade" min="0" value="0">
+
+        <label for="posicao">Posição / Localização</label>
+        <input type="text" id="posicao" name="posicao" placeholder="Prateleira A, gaveta 3...">
+
+        <label for="anotacoes">Anotações</label>
+        <textarea id="anotacoes" name="anotacoes" rows="3"></textarea>
+
+        <button type="submit" class="salvar">Salvar item</button>
+    </form>
+
+    <!-- Listagem de itens -->
+    <h2>Itens cadastrados</h2>
+    {% if itens %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Produto</th>
+                    <th>Grupo</th>
+                    <th>Unidade</th>
+                    <th>Qtd</th>
+                    <th>Limite mín.</th>
+                    <th>Posição</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in itens %}
+                    <tr class="{% if item['quantidade'] is not none and item['limite_minimo'] is not none and item['quantidade'] <= item['limite_minimo'] %}estoque-baixo{% endif %}">
+                        <td>{{ item["nome_produto"] }}</td>
+                        <td>{{ item["nome_grupo"] or "-" }}</td>
+                        <td>{{ item["unidade"] or "-" }}</td>
+                        <td>{{ item["quantidade"] }}</td>
+                        <td>{{ item["limite_minimo"] }}</td>
+                        <td>{{ item["posicao"] or "-" }}</td>
+                        <td>{{ item["status"] }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Nenhum item cadastrado ainda.</p>
+    {% endif %}
+</div>
+
+</body>
+</html>

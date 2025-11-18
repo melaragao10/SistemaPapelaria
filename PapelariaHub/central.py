@@ -113,6 +113,76 @@ def gerenciar_grupos():
 
     return render_template("grupos.html", grupos=grupos)
 
+@app.route("/itens", methods=["GET", "POST"])
+def gerenciar_itens():
+    """
+    Tela para cadastrar e listar itens de papelaria usando os grupos criados.
+    """
+    conexao = conectar_banco()
+
+    # Buscar grupos para preencher o <select> do formulário
+    grupos = conexao.execute(
+        "SELECT id_grupo, nome_grupo FROM grupos_itens ORDER BY nome_grupo"
+    ).fetchall()
+
+    if request.method == "POST":
+        nome_produto = request.form.get("nome_produto", "").strip()
+        grupo_id = request.form.get("grupo_id")  # pode ser vazio
+        unidade = request.form.get("unidade", "").strip()
+        limite_minimo = request.form.get("limite_minimo", "0").strip()
+        quantidade = request.form.get("quantidade", "0").strip()
+        posicao = request.form.get("posicao", "").strip()
+        anotacoes = request.form.get("anotacoes", "").strip()
+
+        if not nome_produto:
+            flash("O nome do produto é obrigatório.", "erro")
+        else:
+            try:
+                conexao.execute(
+                    """
+                    INSERT INTO estoque_itens
+                    (nome_produto, grupo_id, unidade, limite_minimo, quantidade, posicao, anotacoes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        nome_produto,
+                        grupo_id if grupo_id else None,
+                        unidade,
+                        int(limite_minimo or 0),
+                        int(quantidade or 0),
+                        posicao,
+                        anotacoes,
+                    ),
+                )
+                conexao.commit()
+                flash("Item cadastrado com sucesso!", "sucesso")
+            except Exception as e:
+                print("Erro ao inserir item:", e)
+                flash("Erro ao cadastrar o item.", "erro")
+
+        conexao.close()
+        return redirect(url_for("gerenciar_itens"))
+
+    # Se for GET: buscar todos os itens com o nome do grupo
+    itens = conexao.execute(
+        """
+        SELECT
+            e.id_produto,
+            e.nome_produto,
+            e.unidade,
+            e.limite_minimo,
+            e.quantidade,
+            e.posicao,
+            e.status,
+            g.nome_grupo
+        FROM estoque_itens e
+        LEFT JOIN grupos_itens g ON g.id_grupo = e.grupo_id
+        ORDER BY e.nome_produto
+        """
+    ).fetchall()
+
+    conexao.close()
+    return render_template("itens.html", itens=itens, grupos=grupos)
 
 if __name__ == "__main__":
     configurar_banco()
