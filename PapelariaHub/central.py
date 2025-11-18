@@ -413,6 +413,77 @@ def previsao_estoque():
     previsoes = calcular_previsao_estoque()
     return render_template("previsao.html", previsoes=previsoes)
 
+@app.route("/relatorio", methods=["GET", "POST"])
+def relatorio_movimentacoes():
+    """
+    Exibe um relatório filtrado de movimentações por período e item.
+    """
+    conexao = conectar_banco()
+
+    # Itens para o select
+    itens = conexao.execute(
+        "SELECT id_produto, nome_produto FROM estoque_itens ORDER BY nome_produto"
+    ).fetchall()
+
+    resultados = []
+    total_entrada = 0
+    total_saida = 0
+
+    if request.method == "POST":
+        item_id = request.form.get("item_id")
+        inicio = request.form.get("inicio")
+        fim = request.form.get("fim")
+
+        query = """
+            SELECT
+                t.data_registro,
+                e.nome_produto,
+                t.tipo_transacao,
+                t.valor,
+                t.razao,
+                t.operador
+            FROM transacoes_estoque t
+            JOIN estoque_itens e ON e.id_produto = t.produto_id
+            WHERE 1=1
+        """
+
+        params = []
+
+        # filtro por item
+        if item_id and item_id != "todos":
+            query += " AND t.produto_id = ?"
+            params.append(item_id)
+
+        # filtro por data inicial
+        if inicio:
+            query += " AND date(t.data_registro) >= date(?)"
+            params.append(inicio)
+
+        # filtro por data final
+        if fim:
+            query += " AND date(t.data_registro) <= date(?)"
+            params.append(fim)
+
+        query += " ORDER BY t.data_registro DESC"
+
+        resultados = conexao.execute(query, params).fetchall()
+
+        # somatórios
+        for r in resultados:
+            if r["tipo_transacao"] == "entrada":
+                total_entrada += r["valor"]
+            else:
+                total_saida += r["valor"]
+
+    conexao.close()
+
+    return render_template(
+        "relatorio.html",
+        itens=itens,
+        resultados=resultados,
+        total_entrada=total_entrada,
+        total_saida=total_saida
+    )
 
 if __name__ == "__main__":
     configurar_banco()
