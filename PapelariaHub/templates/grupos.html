@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>PapelariaHub - Grupos de Itens</title>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 40px;
+            background: #f5f5f5;
+        }
+        .caixa {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,.15);
+            max-width: 800px;
+            margin: auto;
+        }
+        h1 { margin-top: 0; }
+        form {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-top: 8px;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 6px;
+            box-sizing: border-box;
+        }
+        button {
+            margin-top: 12px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button.salvar {
+            background: #2e7d32;
+            color: white;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border-bottom: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .mensagem-sucesso { color: #2e7d32; }
+        .mensagem-erro { color: #c62828; }
+        .topo-links a {
+            margin-right: 10px;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="caixa">
+    <div class="topo-links">
+        <a href="{{ url_for('tela_principal') }}">Início</a>
+        <!-- depois podemos adicionar links para itens, fluxos, etc -->
+    </div>
+
+    <h1>Grupos de Itens</h1>
+    <p>Use esta tela para organizar os materiais de papelaria em grupos (ex.: Papel, Escrita, Organização).</p>
+
+    <!-- Mensagens -->
+    {% with mensagens = get_flashed_messages(with_categories=true) %}
+      {% if mensagens %}
+        {% for categoria, texto in mensagens %}
+          <p class="mensagem-{{ categoria }}">{{ texto }}</p>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- Formulário de cadastro -->
+    <form method="post">
+        <label for="nome_grupo">Nome do grupo *</label>
+        <input type="text" id="nome_grupo" name="nome_grupo" required>
+
+        <label for="descricao_grupo">Descrição</label>
+        <textarea id="descricao_grupo" name="descricao_grupo" rows="3"></textarea>
+
+        <button type="submit" class="salvar">Salvar grupo</button>
+    </form>
+
+    <!-- Listagem de grupos -->
+    <h2>Grupos cadastrados</h2>
+    {% if grupos %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Descrição</th>
+                    <th>Criado em</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for grupo in grupos %}
+                    <tr>
+                        <td>{{ grupo["nome_grupo"] }}</td>
+                        <td>{{ grupo["descricao_grupo"] or "-" }}</td>
+                        <td>{{ grupo["criado_em"] }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Nenhum grupo cadastrado ainda.</p>
+    {% endif %}
+</div>
+
+</body>
+</html>

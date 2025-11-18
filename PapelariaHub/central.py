@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template, request, redirect, url_for, flash
 import sqlite3
 
 app = Flask(__name__)
@@ -78,6 +78,40 @@ from flask import Flask, render_template
 def tela_principal():
     return render_template("painel.html")
 
+@app.route("/grupos", methods=["GET", "POST"])
+def gerenciar_grupos():
+    """
+    Tela para cadastrar e listar grupos de itens (papel, escrita, organização etc.).
+    """
+    conexao = conectar_banco()
+
+    if request.method == "POST":
+        nome = request.form.get("nome_grupo", "").strip()
+        descricao = request.form.get("descricao_grupo", "").strip()
+
+        if nome:
+            try:
+                conexao.execute(
+                    "INSERT INTO grupos_itens (nome_grupo, descricao_grupo) VALUES (?, ?)",
+                    (nome, descricao),
+                )
+                conexao.commit()
+                flash("Grupo cadastrado com sucesso!", "sucesso")
+            except sqlite3.IntegrityError:
+                flash("Já existe um grupo com esse nome.", "erro")
+        else:
+            flash("O nome do grupo é obrigatório.", "erro")
+
+        conexao.close()
+        return redirect(url_for("gerenciar_grupos"))
+
+    # Se for GET: buscar todos os grupos para exibir na tela
+    grupos = conexao.execute(
+        "SELECT id_grupo, nome_grupo, descricao_grupo, criado_em FROM grupos_itens ORDER BY nome_grupo"
+    ).fetchall()
+    conexao.close()
+
+    return render_template("grupos.html", grupos=grupos)
 
 
 if __name__ == "__main__":
